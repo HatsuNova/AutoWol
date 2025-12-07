@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+配置文件示例
+使用前请将此文件重命名为 config.py 并修改相应配置
+"""
+
+# 目标服务器配置
+TARGET_IP = '192.168.1.105'          # 目标服务器的IP地址
+TARGET_MAC = 'AA:BB:CC:DD:EE:FF'     # 目标服务器的MAC地址
+TARGET_PORT = 22                     # 用于检测服务器状态的端口（SSH: 22, RDP: 3389, SMB: 445）
+
+# Flask Web服务器配置
+FLASK_HOST = '0.0.0.0'               # 监听所有网络接口
+FLASK_PORT = 5001                    # Web服务端口
+
+# 安全配置
+SECRET_KEY = 'your-secret-key-change-this'    # ⚠️ 请修改为随机字符串
+USERNAME = 'admin'                             # 登录用户名
+PASSWORD = 'your-password-here'                # ⚠️ 请修改为强密码
+SESSION_TIMEOUT = 3600                         # Session 超时时间（秒）
+MAX_LOGIN_ATTEMPTS = 5                         # 最大登录尝试次数
+LOGIN_BLOCK_TIME = 300                         # 登录失败后锁定时间（秒）

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoWOL - 服务器远程唤醒</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .user-info {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .user-info .username {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .logout-link {
+            color: #dc3545;
+            text-decoration: none;
+            margin-left: 10px;
+            font-size: 13px;
+        }
+
+        .logout-link:hover {
+            text-decoration: underline;
+        }
+
+        .server-info {
+            background: #f7f9fc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .value {
+            color: #333;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .status-indicator.online {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-indicator.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-indicator.checking {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.online .status-dot {
+            background: #28a745;
+        }
+
+        .status-indicator.offline .status-dot {
+            background: #dc3545;
+        }
+
+        .status-indicator.checking .status-dot {
+            background: #ffc107;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-wake {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-wake:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-wake:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-refresh {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-refresh:hover:not(:disabled) {
+            background: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
+        }
+
+        .message {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+            text-align: center;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 30px;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖥️ 服务器远程唤醒</h1>
+        
+        <div class="user-info">
+            欢迎，<span class="username">{{ username }}</span>
+            <a href="{{ url_for('logout') }}" class="logout-link">退出登录</a>
+        </div>
+        
+        <div class="server-info">
+            <div class="info-row">
+                <span class="label">目标IP:</span>
+                <span class="value">{{ target_ip }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">MAC地址:</span>
+                <span class="value">{{ target_mac }}</span>
+            </div>
+        </div>
+
+        <div class="status-container">
+            <div class="status-indicator checking" id="statusIndicator">
+                <span class="status-dot"></span>
+                <span id="statusText">检测中...</span>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-wake" id="wakeBtn" onclick="sendWakeOnLan()">
+                ⚡ 唤醒服务器
+            </button>
+            <button class="btn-refresh" onclick="checkStatus()">
+                🔄 刷新状态
+            </button>
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <div class="footer">
+            AutoWOL v1.0 | 自动刷新: <span id="countdown">10</span>秒
+        </div>
+    </div>
+
+    <script>
+        let refreshTimer;
+        let countdownTimer;
+        let countdownValue = 10;
+
+        // 页面加载时检查状态
+        window.onload = function() {
+            checkStatus();
+            startAutoRefresh();
+        };
+
+        // 检查服务器状态
+        async function checkStatus() {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            indicator.className = 'status-indicator checking';
+            statusText.innerHTML = '检测中...<span class="loading-spinner"></span>';
+
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                if (data.status === 'online') {
+                    indicator.className = 'status-indicator online';
+                    statusText.textContent = '在线';
+                } else {
+                    indicator.className = 'status-indicator offline';
+                    statusText.textContent = '离线';
+                }
+            } catch (error) {
+                indicator.className = 'status-indicator offline';
+                statusText.textContent = '检测失败';
+                console.error('Error checking status:', error);
+            }
+        }
+
+        // 发送WOL唤醒包
+        async function sendWakeOnLan() {
+            const wakeBtn = document.getElementById('wakeBtn');
+            const message = document.getElementById('message');
+
+            wakeBtn.disabled = true;
+            wakeBtn.textContent = '⚡ 发送中...';
+
+            try {
+                const response = await fetch('/api/wake', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('success', data.message + ' 请等待约30秒后刷新状态。');
+                    // 10秒后自动刷新状态
+                    setTimeout(() => {
+                        checkStatus();
+                    }, 10000);
+                } else {
+                    showMessage('error', data.message);
+                }
+            } catch (error) {
+                showMessage('error', '发送失败: ' + error.message);
+                console.error('Error sending WOL:', error);
+            } finally {
+                wakeBtn.disabled = false;
+                wakeBtn.textContent = '⚡ 唤醒服务器';
+            }
+        }
+
+        // 显示消息
+        function showMessage(type, text) {
+            const message = document.getElementById('message');
+            message.className = `message ${type} show`;
+            message.textContent = text;
+
+            setTimeout(() => {
+                message.classList.remove('show');
+            }, 5000);
+        }
+
+        // 自动刷新功能
+        function startAutoRefresh() {
+            countdownValue = 10;
+            updateCountdown();
+
+            countdownTimer = setInterval(() => {
+                countdownValue--;
+                updateCountdown();
+
+                if (countdownValue <= 0) {
+                    countdownValue = 10;
+                    checkStatus();
+                }
+            }, 1000);
+        }
+
+        function updateCountdown() {
+            document.getElementById('countdown').textContent = countdownValue;
+        }
+
+        // 页面卸载时清理定时器
+        window.onbeforeunload = function() {
+            if (refreshTimer) clearInterval(refreshTimer);
+            if (countdownTimer) clearInterval(countdownTimer);
+        };
+    </script>
+</body>
+</html>
